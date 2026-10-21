@@ -1,0 +1,17 @@
+# Veri seti klasörleri (Boyutları büyük, GitHub'a YÜKLENMEYECEK)
+dataset/
+dataset_raw/
+*.zip
+*.tar.gz
+
+# Python sanal ortam ve önbellek dosyaları
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Yapay Zeka model ağırlık dosyaları (Çok yer kaplarlar)
+*.pth
+*.h5
+*.pt
