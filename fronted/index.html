@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N3uro - Beyin MR Tümör Sınıflandırma</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- PDF Oluşturucu Kütüphane (html2pdf.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">N3uro <span>AI</span></div>
+        <nav>
+            <a href="index.html" class="active">Ana Analiz Paneli</a>
+            <a href="timeline.html">Geçmiş Analizler (Timeline)</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- UYARI BANNERI (Geçersiz MR Durumu) -->
+        <div id="error-banner" class="alert-banner hidden">
+            ⚠️ <strong>Geçersiz Girdi:</strong> Yüklenen görsel beklenen beyin MR formatına uygun değildir veya desteklenmeyen bir dosya türüdür. Sınıflandırma durduruldu.
+        </div>
+
+        <div class="grid-layout">
+            <!-- 1. BÖLÜM: MR GÖRÜNTÜ YÜKLEME (FR-1) -->
+            <section class="card upload-card">
+                <h2>1. Beyin MR Görüntüsü Yükleme</h2>
+                <div class="drop-zone" id="drop-zone">
+                    <p>MR Görselini Buraya Sürükleyin veya <span>Dosya Seçin</span></p>
+                    <input type="file" id="image-input" accept="image/*" hidden>
+                </div>
+                <div id="preview-container" class="preview-box hidden">
+                    <img id="raw-image-preview" src="" alt="Yüklenen MR">
+                    <button id="btn-analyze" class="btn-primary">Analizi Başlat</button>
+                </div>
+            </section>
+
+            <!-- 2. BÖLÜM: ANALİZ VE GRAD-CAM ÇIKTI PANELİ (FR-2, FR-3) -->
+            <section class="card result-card" id="report-content">
+                <h2>2. Analiz ve XAI Sonuçları</h2>
+                
+                <div class="results-header">
+                    <div>
+                        <h3>Tespit Edilen Sınıf: <span id="predicted-class">-</span></h3>
+                        <p>Güven Skoru: <strong id="confidence-score">-%</strong></p>
+                    </div>
+                    <button id="btn-download-pdf" class="btn-secondary hidden">📄 PDF Raporu İndir</button>
+                </div>
+
+                <!-- Orijinal MR ve Grad-CAM Yan Yana Gösterim -->
+                <div class="image-comparison">
+                    <div class="img-box">
+                        <h4>Orijinal MR</h4>
+                        <img id="display-original" src="https://via.placeholder.com/224?text=MR+Gorseli" alt="Orijinal MR">
+                    </div>
+                    <div class="img-box">
+                        <h4>Grad-CAM Isı Haritası (XAI)</h4>
+                        <img id="display-gradcam" src="https://via.placeholder.com/224?text=Grad-CAM" alt="Grad-CAM Output">
+                    </div>
+                </div>
+
+                <!-- TIBBİ BİLGİLENDİRME (FR-5) -->
+                <div class="info-box">
+                    <h4>Tıbbi Bilgilendirme</h4>
+                    <p id="medical-info-text">Analiz yapıldıktan sonra tümör türüne ait ayrıntılı bilgi burada görüntülenecektir.</p>
+                    <small class="disclaimer">⚠️ **Yasal Uyarı:** Sistem çıktıları karar destek amaçlıdır; kesin tanı veya doktor değerlendirmesi yerine geçmez.</small>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
