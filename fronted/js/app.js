@@ -49,54 +49,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        btnAnalyze.innerText = "Analiz Ediliyor...";
+        btnAnalyze.innerText = "Yapay Zeka Analiz Ediyor...";
         btnAnalyze.disabled = true;
 
         try {
-            /* 
-               Rana Backend API'yi tamamladığında bura açılacak:
-               const response = await fetch('http://localhost:8000/api/predict', {
-                   method: 'POST',
-                   body: formData
-               });
-               const data = await response.json();
-            */
+            // 4. HAFTA: Rana'nın Backend API'sine gerçek bağlantı
+            const response = await fetch('http://127.0.0.1:8000/predict', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) throw new Error("API hatası");
+            
+            const data = await response.json();
 
-            // SIMÜLASYON / MOCK VERİ (Backend hazır olana kadar test için):
-            setTimeout(() => {
-                // Mock Geçerlilik Kontrolü Testi:
-                const isBrainMR = true; // Yanıt backend'den gelecek
-
-                if (!isBrainMR) {
-                    showError("Yüklenen görsel beyin MR niteliği taşımamaktadır.");
-                    btnAnalyze.innerText = "Analizi Başlat";
-                    btnAnalyze.disabled = false;
-                    return;
-                }
-
-                // Mock Sonuçlar (Glioma, Meningioma, Pituitary veya No tumor)
-                const mockResult = {
-                    class: "Glioma",
-                    confidence: 94.2,
-                    original_url: rawImagePreview.src,
-                    gradcam_url: rawImagePreview.src, // Normalde Grad-CAM ısı haritası URL'si gelecek
-                    info: "Glioma, beyin ve omurilikteki glial hücrelerden kaynaklanan bir tümör türüdür. Düzenli uzman hekim kontrolü önerilir."
-                };
-
-                // Arayüzü Güncelle (FR-2, FR-3, FR-5)
-                displayOriginal.src = mockResult.original_url;
-                displayGradcam.src = mockResult.gradcam_url;
-                predictedClass.innerText = mockResult.class;
-                confidenceScore.innerText = `%${mockResult.confidence}`;
-                medicalInfoText.innerText = mockResult.info;
-                
-                btnDownloadPdf.classList.remove('hidden');
-                btnAnalyze.innerText = "Analiz Tamamlandı";
-                btnAnalyze.disabled = false;
-            }, 1500);
+            // Arayüzü backend'den gelen gerçek verilerle güncelle
+            displayOriginal.src = rawImagePreview.src;
+            displayGradcam.src = rawImagePreview.src; // 5. hafta Grad-CAM gelene kadar orijinali koyuyoruz
+            
+            predictedClass.innerText = data.tahmin;
+            confidenceScore.innerText = `%${(data.guven_orani * 100).toFixed(1)}`;
+            
+            // Hastalık bilgilendirmesi
+            if (data.tahmin === "Glioma") medicalInfoText.innerText = "Glioma, glial hücrelerden kaynaklanan bir tümör türüdür. Uzman değerlendirmesi şarttır.";
+            else if (data.tahmin === "Meningioma") medicalInfoText.innerText = "Meningioma, genellikle iyi huylu olan ve beyin zarlarında oluşan tümördür.";
+            else if (data.tahmin === "Pituitary") medicalInfoText.innerText = "Hipofiz bezi tümörüdür. Hormonal dengesizliklere yol açabilir.";
+            else medicalInfoText.innerText = "Tümör bulgusuna rastlanmamıştır. Sağlıklı MR görüntüsü.";
+            
+            btnDownloadPdf.classList.remove('hidden');
+            btnAnalyze.innerText = "Analiz Tamamlandı";
+            btnAnalyze.disabled = false;
 
         } catch (error) {
-            showError("Backend API ile bağlantı kurulamadı.");
+            showError("Backend API ile bağlantı kurulamadı. Sunucunun terminalde çalıştığından emin olun.");
             btnAnalyze.innerText = "Analizi Başlat";
             btnAnalyze.disabled = false;
         }
