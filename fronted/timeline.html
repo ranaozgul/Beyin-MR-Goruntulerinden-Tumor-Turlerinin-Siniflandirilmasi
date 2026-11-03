@@ -2,15 +2,9 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>N3uro - Analiz Geçmişi (Timeline)</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        .timeline-item {
-            border-left: 3px solid var(--accent);
-            padding-left: 1rem;
-            margin-bottom: 1.5rem;
-        }
-    </style>
 </head>
 <body>
     <header class="navbar">
@@ -23,18 +17,19 @@
 
     <main class="container">
         <section class="card">
-            <h2>Hasta Geçmişi ve Zaman Çizelgesi (FR-4)</h2>
-            <div class="timeline-list">
-                <div class="timeline-item">
-                    <h4>Tarih: 12.10.2026 - Kayıt ID: #MR-8842</h4>
-                    <p>Tespit: <strong>Glioma (%91.2)</strong></p>
-                </div>
-                <div class="timeline-item">
-                    <h4>Tarih: 01.05.2026 - Kayıt ID: #MR-4102</h4>
-                    <p>Tespit: <strong>Glioma (%84.5)</strong></p>
-                </div>
+            <h2>Hasta Analiz Geçmişi ve Zaman Çizelgesi (FR-4)</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Supabase veritabanına kaydedilmiş olan geçmiş MR analiz sonuçları aşağıda kronolojik olarak listelenmektedir.
+            </p>
+
+            <!-- DİNAMİK VERİ YÜKLENME ALANI -->
+            <div id="timeline-container" class="timeline-list">
+                <p id="loading-text" style="color: var(--text-muted);">⏳ Geçmiş analizler veritabanından çekiliyor...</p>
             </div>
         </section>
     </main>
+
+    <!-- Timeline Dinamik Mantık Kodu -->
+    <script src="js/timeline.js"></script>
 </body>
 </html>

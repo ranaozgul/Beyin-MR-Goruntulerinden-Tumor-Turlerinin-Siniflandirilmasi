@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let selectedFile = null;
 
-    // 1. Görsel Sürükle / Bırak ve Seçme
+    // 1. Görsel Seçimi ve Otomatik Buton Sıfırlama
     dropZone.addEventListener('click', () => imageInput.click());
 
     imageInput.addEventListener('change', (e) => {
@@ -25,9 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFileSelect(file) {
         if (!file) return;
         
-        // Basit Frontend Ön Kontrolü (FR-1)
         if (!file.type.startsWith('image/')) {
-            showError("Lütfen geçerli bir görsel dosyası seçin.");
+            showError("Lütfen geçerli bir görsel dosyası (PNG, JPG, JPEG) seçin.");
             return;
         }
 
@@ -38,22 +37,27 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (e) => {
             rawImagePreview.src = e.target.result;
             previewContainer.classList.remove('hidden');
+
+            // Yeni bir resim seçildiği an butonu anında 'Analizi Başlat' durumuna getiriyoruz
+            btnAnalyze.innerText = "🚀 Analizi Başlat";
+            btnAnalyze.disabled = false;
+            btnAnalyze.classList.remove('btn-success'); // Varsa yeşil/tamamlandı stilini kaldır
         };
         reader.readAsDataURL(file);
     }
 
-    // 2. Backend API Entegrasyonu (İş Paketi 6 & FR-2, FR-3)
+    // 2. Analiz Butonu ve Durum Yönetimi
     btnAnalyze.addEventListener('click', async () => {
         if (!selectedFile) return;
 
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        btnAnalyze.innerText = "Yapay Zeka Analiz Ediyor...";
+        // Yüklenme Durumu (Loading State)
+        btnAnalyze.innerText = "⏳ Yapay Zekâ Analiz Ediyor...";
         btnAnalyze.disabled = true;
 
         try {
-            // 4. HAFTA: Rana'nın Backend API'sine gerçek bağlantı
             const response = await fetch('http://127.0.0.1:8000/predict', {
                 method: 'POST',
                 body: formData
@@ -63,31 +67,48 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await response.json();
 
-            // Arayüzü backend'den gelen gerçek verilerle güncelle
+            // Arayüzü Güncelleme
             displayOriginal.src = rawImagePreview.src;
-            displayGradcam.src = rawImagePreview.src; // 5. hafta Grad-CAM gelene kadar orijinali koyuyoruz
+
+            // --- 5. HAFTA HAFTA GÜNCELLEMESİ (Gerçek Grad-CAM Bağlantısı) ---
+            // Backend'den 'gradcam_url' veya base64 formatında 'gradcam_image' gelecek
+            if (data.gradcam_url) {
+                displayGradcam.src = data.gradcam_url;
+            } else if (data.gradcam_image) {
+            displayGradcam.src = `data:image/jpeg;base64,${data.gradcam_image}`;
+            } else {
+                displayGradcam.src = rawImagePreview.src; // Fallback (Yedek)
+            }
+
+            predictedClass.innerText = data.tahmin || data.predicted_class;
+            confidenceScore.innerText = `%${((data.guven_orani || data.confidence_score) * 100).toFixed(1)}`;
             
-            predictedClass.innerText = data.tahmin;
-            confidenceScore.innerText = `%${(data.guven_orani * 100).toFixed(1)}`;
-            
-            // Hastalık bilgilendirmesi
-            if (data.tahmin === "Glioma") medicalInfoText.innerText = "Glioma, glial hücrelerden kaynaklanan bir tümör türüdür. Uzman değerlendirmesi şarttır.";
-            else if (data.tahmin === "Meningioma") medicalInfoText.innerText = "Meningioma, genellikle iyi huylu olan ve beyin zarlarında oluşan tümördür.";
-            else if (data.tahmin === "Pituitary") medicalInfoText.innerText = "Hipofiz bezi tümörüdür. Hormonal dengesizliklere yol açabilir.";
-            else medicalInfoText.innerText = "Tümör bulgusuna rastlanmamıştır. Sağlıklı MR görüntüsü.";
+            // Hastalık Bilgilendirmesi
+            if (data.tahmin === "Glioma") {
+                medicalInfoText.innerText = "Glioma, glial hücrelerden kaynaklanan bir tümör türüdür. Uzman değerlendirmesi şarttır.";
+            } else if (data.tahmin === "Meningioma") {
+                medicalInfoText.innerText = "Meningioma, genellikle iyi huylu olan ve beyin zarlarında oluşan tümördür.";
+            } else if (data.tahmin === "Pituitary") {
+                medicalInfoText.innerText = "Hipofiz bezi tümörüdür. Hormonal dengesizliklere yol açabilir.";
+            } else {
+                medicalInfoText.innerText = "Tümör bulgusuna rastlanmamıştır. Sağlıklı MR görüntüsü.";
+            }
             
             btnDownloadPdf.classList.remove('hidden');
-            btnAnalyze.innerText = "Analiz Tamamlandı";
+
+            // Analiz bittiğinde butonu kilitli bırakmak yerine 'Yeniden Analiz Et' yapıp AKTİF tutuyoruz
+            btnAnalyze.innerText = "🔄 Yeniden Analiz Et";
             btnAnalyze.disabled = false;
+            btnAnalyze.classList.add('btn-success');
 
         } catch (error) {
-            showError("Backend API ile bağlantı kurulamadı. Sunucunun terminalde çalıştığından emin olun.");
-            btnAnalyze.innerText = "Analizi Başlat";
+            showError("Backend API ile bağlantı kurulamadı. Sunucunun çalıştığından emin olun.");
+            btnAnalyze.innerText = "🚀 Analizi Başlat";
             btnAnalyze.disabled = false;
         }
     });
 
-    // 3. PDF Raporu Oluşturma (FR-6)
+    // 3. PDF Raporu Oluşturma
     btnDownloadPdf.addEventListener('click', () => {
         const element = document.getElementById('report-content');
         const opt = {
