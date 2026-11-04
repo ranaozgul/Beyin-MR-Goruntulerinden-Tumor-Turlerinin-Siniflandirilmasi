@@ -1,76 +1,113 @@
+
 import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 
+
 class GradCAM:
     def __init__(self, model, target_layer):
         self.model = model
         self.target_layer = target_layer
-        self.gradients = None
         self.activations = None
-        
-        self.target_layer.register_forward_hook(self.save_activation)
-        self.target_layer.register_full_backward_hook(self.save_gradient)
+        self.gradients = None
 
-    def save_activation(self, module, input, output):
+        self.target_layer.register_forward_hook(
+            self.save_activation
+        )
+
+    def save_activation(self, module, inputs, output):
         self.activations = output.detach()
 
-    def save_gradient(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0].detach()
+        if output.requires_grad:
+            output.register_hook(self.save_gradient)
+
+    def save_gradient(self, gradient):
+        self.gradients = gradient.detach()
 
     def generate_heatmap(self, input_tensor, class_idx=None):
         self.model.eval()
-        
-        input_tensor = input_tensor.clone().detach().requires_grad_(True)
-        
-        # İleri yayılım (Forward pass)
-        output = self.model(input_tensor)
-        
-        if class_idx is None:
-            class_idx = torch.argmax(output, dim=1).item()
-            
-        # Sadece tahmin edilen sınıfın skorunu baz alarak geriye yayılım (Backward pass)
-        self.model.zero_grad()
-        score = output[0, class_idx]
-        score.backward()
-        
-        if self.gradients is None or self.activations is None:
-            return np.zeros((224, 224), dtype=np.float32)
-            
-        # Global Average Pooling ile gradyan ağırlıklarını hesapla (Alpha katsayıları)
-        weights = torch.mean(self.gradients, dim=(2, 3))[0, :]
-        activations = self.activations[0, ...]
-        
-        # Ağırlıklı kombinasyon (Linear combination of maps)
-        heatmap = torch.zeros(activations.shape[1:], dtype=torch.float32, device=activations.device)
-        for i, w in enumerate(weights):
-            heatmap += w * activations[i, ...]
-            
-        # ReLU aktivasyonu (Sadece pozitif katkı veren pikselleri filtrele)
-        heatmap = F.relu(heatmap)
-        
-        # Normalize et [0, 1] aralığına çek
-        max_val = torch.max(heatmap)
-        if max_val > 0:
-            heatmap /= max_val
-            
-        return heatmap.cpu().numpy()
 
-def apply_gradcam_on_image(img_array, heatmap, alpha=0.5, colormap=cv2.COLORMAP_JET):
-    # Isı haritasını orijinal görselin piksel boyutuna yeniden boyutlandır
-    heatmap = cv2.resize(heatmap, (img_array.shape[1], img_array.shape[0]))
-    
-    # 0-255 aralığına uint8 formatına dönüştür
-    heatmap = np.uint8(255 * heatmap)
-    
-    # OpenCV JET renk haritasını (Mavi -> Sarı -> Kırmızı) uygula
-    heatmap_colored = cv2.applyColorMap(heatmap, colormap)
-    
-    if len(img_array.shape) == 2 or img_array.shape[2] == 1:
-        img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
-        
-    # Isı haritasını orijinal MR üzerine şeffaf bir şekilde harmanla (Overlay)
-    superimposed_img = cv2.addWeighted(img_array, 1.0 - alpha, heatmap_colored, alpha, 0)
-    
-    return superimposed_img
+        self.activations = None
+        self.gradients = None
+
+        with torch.enable_grad():
+            input_tensor = input_tensor.detach()
+
+            output = self.model(input_tensor)
+
+            if class_idx is None:
+                class_idx = output.argmax(dim=1).item()
+
+            self.model.zero_grad(set_to_none=True)
+
+            score = output[:, class_idx].sum()
+            score.backward()
+
+            if self.gradients is None or self.activations is None:
+                raise RuntimeError("Grad-CAM gradyanları yakalanamadı!")
+
+            weights = self.gradients.mean(
+                dim=(2, 3),
+                keepdim=True
+            )
+
+            heatmap = (
+                weights * self.activations
+            ).sum(dim=1, keepdim=True)
+
+            heatmap = F.relu(heatmap)
+
+            heatmap = F.interpolate(
+                heatmap,
+                size=(224, 224),
+                mode="bilinear",
+                align_corners=False
+            )
+
+            heatmap = heatmap[0, 0]
+
+            heatmap = heatmap - heatmap.min()
+
+            max_value = heatmap.max()
+
+            if max_value.item() < 1e-8:
+                raise RuntimeError("Grad-CAM haritası sıfır oluştu!")
+
+            heatmap = heatmap / max_value
+
+            return heatmap.cpu().numpy()
+
+
+def apply_gradcam_on_image(
+    img_array,
+    heatmap,
+    alpha=0.45,
+    colormap=cv2.COLORMAP_JET
+):
+    if len(img_array.shape) == 2:
+        img_array = cv2.cvtColor(
+            img_array, cv2.COLOR_GRAY2BGR
+        )
+
+    heatmap = cv2.resize(
+        heatmap,
+        (img_array.shape[1], img_array.shape[0])
+    )
+
+    heatmap = np.clip(heatmap, 0, 1)
+
+    heatmap_uint8 = np.uint8(255 * heatmap)
+
+    heatmap_colored = cv2.applyColorMap(
+        heatmap_uint8,
+        colormap
+    )
+
+    return cv2.addWeighted(
+        img_array,
+        1 - alpha,
+        heatmap_colored,
+        alpha,
+        0
+    )
