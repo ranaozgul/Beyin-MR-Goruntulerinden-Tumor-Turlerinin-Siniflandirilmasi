@@ -86,3 +86,12 @@ body {
 }
 
 .hidden { display: none !important; }
+
+/* Analiz Tamamlandığında Butonun Başarı Stili */
+.btn-primary.btn-success {
+    background-color: #059669 !important; /* Emerald Yeşili */
+}
+
+.btn-primary.btn-success:hover {
+    background-color: #047857 !important;
+}
