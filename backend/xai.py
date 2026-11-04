@@ -10,7 +10,6 @@ class GradCAM:
         self.gradients = None
         self.activations = None
         
-        # PyTorch forward ve backward hook'larını güvenli bir şekilde bağlıyoruz
         self.target_layer.register_forward_hook(self.save_activation)
         self.target_layer.register_full_backward_hook(self.save_gradient)
 
@@ -18,13 +17,11 @@ class GradCAM:
         self.activations = output.detach()
 
     def save_gradient(self, module, grad_input, grad_output):
-        # Gradyanları güvenli bir şekilde yakala
         self.gradients = grad_output[0].detach()
 
     def generate_heatmap(self, input_tensor, class_idx=None):
         self.model.eval()
         
-        # Giriş tensörünün gradyan gerektirdiğinden emin olalım
         input_tensor = input_tensor.clone().detach().requires_grad_(True)
         
         # İleri yayılım (Forward pass)
@@ -39,7 +36,6 @@ class GradCAM:
         score.backward()
         
         if self.gradients is None or self.activations is None:
-            # Güvenlik önlemi: Gradyanlar yakalanamazsa boş matris dönmesin
             return np.zeros((224, 224), dtype=np.float32)
             
         # Global Average Pooling ile gradyan ağırlıklarını hesapla (Alpha katsayıları)
